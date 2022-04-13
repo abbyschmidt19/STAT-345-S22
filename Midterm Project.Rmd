@@ -1,0 +1,158 @@
+---
+title: "STAT 345 Midterm Project"
+author: "Abby Schmidt"
+font: 12pt
+output: 
+        word_document: default
+---
+
+```{r, setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, include=FALSE}
+## Install and call needed R packages
+library(devtools)
+library(dplyr)
+library(tidyverse)
+library(ggplot2)
+library(grid)
+library(jpeg)
+```
+  
+```{r, include=FALSE}
+## Install and call 'nbastatR' package
+devtools::install_github("abresler/nbastatR")
+library(nbastatR)
+```
+  
+```{r, include=FALSE}
+## Increase size of connection buffer to load data
+Sys.setenv("VROOM_CONNECTION_SIZE" = 131072 * 2)
+```
+  
+```{r, include=FALSE}
+## Load half-court image
+courtImg.URL <- "nba_court.jpg"
+court <- rasterGrob(readJPEG(courtImg.URL),width=unit(1,"npc"), height=unit(1,"npc"))
+```
+
+# Minnesota Timberwolves Shot Analysis
+## Brief Report
+* Function created that generates a single team shot chart for any given season.
+* Charts over the past 20 years are displayed but charts can be generated for seasons dating back to 1997.
+* Shot locations have changed significantly over time:
+  + Shots taken beyond the 3pt arc increased 
+  + Mid-range shots taken decreased
+  + Currently, the majority of shots taken occur in the paint or beyond the arc.
+* Majority of made shots also occur in the paint or beyond the arc.
+* Suggested that these two areas remain the main shooting hot spots for optimal success.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+## Purpose: generate shot chart for the Minnesota Timberwolves to analyze shot patterns
+## Input: year(function can only take in one year at a time successfully)
+## Output: half-court image of all shots taken during the given season (plotted by location) with color highlighting    whether the shot was made or missed  
+
+shot.chart <- function(year){
+  # Gather season data
+  data = teams_shots(teams = "Minnesota Timberwolves", seasons = year)
+  # Select columns needed
+  data2 = data %>% select(typeEvent, locationX, locationY)
+  # Create shot chart
+  ggplot(data2, aes(x=locationX, y=locationY)) + 
+      # Input court image with scaled dimensions
+      annotation_custom(court, -250, 250, -50, 420) + 
+      # Customize color of points to reflect made/missed shots
+      geom_point(aes(color = typeEvent)) + 
+      scale_color_manual(values = c("Made Shot" = "chartreuse", "Missed shot" = "navy")) +
+      # Set axis limits to reflect dimensions of NBA court
+      xlim(250, -250) + ylim(-50, 420) + 
+      # Insert titles/ labels (did not include axis labels because they were not needed to analyze plot)
+      labs(title = "Minnesota Timberwolves Shot Chart", 
+          subtitle = year, color = "Shot Status", x = " ", y = " ")
+  # Messed around with binning points and opacity, but could not get a clear result that displayed the data in a         better way
+}
+## Generate shot charts over the past 20 seasons to analyze patterns over time (only seven charts displayed so report    with knit efficiently)
+shot.chart(2021)
+shot.chart(2018)
+shot.chart(2015)
+shot.chart(2012)
+shot.chart(2009)
+shot.chart(2006)
+shot.chart(2003)
+```
+
+## Detailed Report
+<p>All shot data was generated using the 'nbastatR' Github package.  Functions from the 'grid' and 'jpeg' packages were used to read in an NBA half-court image and scale it appropriately in order to be overlaid on the generated plots.  A function ('shot.chart') was then created to generate a shot chart for any season from 1997 to 2021.  This function takes the input of year and uses it to extract the shot data for that particular season.  It then extracts only the columns needed to generate a shot chart:  "typeEvent" (miss/made), "locationX", and "locationY".  The package 'ggplot2' takes in this data to create a shot chart where individual shots are plotted using the location data (inches) on top of the half-court image.  The x and y axis limits were set to mimic the dimensions of an NBA half-court (inches). Shots were depicted as made or missed using the teams colors of neon green and dark blue for analytical purposes. 
+<p>The 'shot.chart' function was used to generate shot charts for the past 20 years in order to analyze the Timberwolves shot patterns overtime.  It was found that shot locations changed dramatically from 2001 to 2021.  For example, first glance shows that mid range shots taken has steadily decreased over the years as 3pt shots became more popular.  The generated shot charts depict that the large majority of the team's shots are taken beyond the arc or within the lane with undetectable changes in the concentrations of made/missed shots.  Therefore, they should continue to make these regions their shooting hot spots for optimal success. 
+
+## Above and Beyond
+<p>More aspects of the shot data were explored in order to conduct a more thorough analysis.  I decided against exploring a different data set because there were too many stories to be told given the shot data.  Therefore, I created three additional functions that each explore a different aspect of the shot data in order to gain a better understanding of they Timberwolves shot tendencies.
+<p>The first function ('shot.chart.region') generates a team shot chart for any given season, using color to highlight the seven shot regions and shape to distinguish between made and missed shots.  This function is fundamentally the same as 'shot.chart' but uses the additional column "zoneBasic" in order to display the different shot regions.  This function allows for regional shot tendencies to be examined in order to conclude the team's most accurate places to take shots, ultimately determining regions to focus on and regions that need improvement.
+  
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+## Purpose: generate regional shot chart for the Minnesota Timberwolves to analyze shot patterns by region
+## Input: year(function can only take in one year at a time successfully)
+## Output: half-court image of all shots taken during the given season (plotted by location) with color highlighting    the various shot regions and shape displaying whether the shot was made or missed  
+shot.chart.region <- function(year){
+  data = teams_shots(teams = "Minnesota Timberwolves", seasons = year)
+  ## select the additional column "zoneBasic"
+  data2 = data %>% select(typeEvent, zoneBasic, locationX, locationY)
+  ggplot(data2, aes(x=locationX, y=locationY)) + 
+      annotation_custom(court, -250, 250, -50, 420) + 
+      geom_point(aes(color = zoneBasic, shape = typeEvent)) + 
+      xlim(250, -250) + ylim(-50, 420) + 
+      labs(title = "Minnesota Timberwolves Regional Shot Chart", 
+          subtitle = year, color = "Shot Status", x = " ", y = " ")
+}
+## Regional shot chart generated for 2018 season as example
+shot.chart.region(year = 2018)
+```
+
+<p>The second function ('shot.chart.clutch') generates a team shot chart of all shots taken within the last minute of a quarter for any given season.  This function also uses color to highlight the seven shooting regions and shape to distinguish between made and missed shots.  This function is a modified version of the 'shot.chart.region' function that additionally filters shots based on "minutesRemaining".  It allows for 'clutch' shots to be examined in order to determine which regions are optimal shot locations when time is running out, resulting in winning more close games.  
+
+```{r echo=FALSE, message=TRUE, warning=FALSE}
+## Purpose: generate 'clutch' shot chart for the Minnesota Timberwolves to analyze 'clutch' shot patterns by region
+## Input: year(function can only take in one year at a time successfully)
+## Output: half-court image of all shots taken during the last minute of a quarter for the given season (plotted by     location) with color highlighting the various shot regions and shape displaying whether the shot was made or         missed  
+shot.chart.clutch <- function(year){
+  data = teams_shots(teams = "Minnesota Timberwolves", seasons = year)
+  data2 = data %>% select(typeEvent, minutesRemaining, zoneBasic, locationX, locationY)
+  ## Get all shots within the last minute
+  data3 = data2 %>% filter(minutesRemaining == 0)
+  ggplot(data3, aes(x=locationX, y=locationY)) + 
+      annotation_custom(court, -250, 250, -50, 420) + 
+      geom_point(aes(color = zoneBasic, shape = typeEvent)) + 
+      xlim(250, -250) + ylim(-50, 420) + 
+      labs(title = "Minnesota Timberwolves Clutch Shot Chart", 
+          subtitle = year, color = "Shot Status", x = " ", y = " ")
+}
+## Regional 'clutch' shot chart generated for 2018 season as example
+shot.chart.clutch(year = 2018)
+```
+
+<p>The third function ('shot.chart.clutch.player') generates an individual player shot chart of all 'clutch' shots taken within the last minute of a quarter of any participating season.  This function is a modified version of the previous where is takes in both year and player in order to produce chart with color highlighting the shooting regions and shape indicating whether the shot was made or missed.  This function allows the 'clutch' analysis of the individual player and ultimately tells us who we want to take shots when time is running out, as well as where they should take these 'clutch' shots.  
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+## Purpose: generate 'clutch' shot chart for a Minnesota Timberwolves player to analyze 'clutch' shot patterns by       region for the individual player
+## Inputs: year(function can only take in one year at a time successfully) and player (full name required)
+## Output: half-court image of all shots taken during the last minute of a quarter for the given season and player      (plotted by location) with color highlighting the various shot regions and shape displaying whether the shot was     made or missed  
+shot.chart.clutch.player <- function(year, player){
+  data = teams_shots(teams = "Minnesota Timberwolves", seasons = year)
+  ## Select additional column "namePlayer"
+  data2 = data %>% select(namePlayer, typeEvent, minutesRemaining, zoneBasic, locationX, locationY)
+  data3 = data2 %>% filter(minutesRemaining == 0)
+  ## Get only shots taken by specified player
+  data4 = data3 %>% filter(namePlayer == player)
+  ggplot(data4, aes(x=locationX, y=locationY)) + 
+      annotation_custom(court, -250, 250, -50, 420) + 
+      geom_point(aes(color = zoneBasic, shape = typeEvent)) + 
+      xlim(250, -250) + ylim(-50, 420) + 
+      labs(title = "Minnesota Timberwolves Clutch Player Shot Chart", 
+          subtitle = player, caption = year, color = "Shot Status", x = " ", y = " ")
+}
+## Regional 'clutch' player shot chart generate for 2018 season as example
+shot.chart.clutch.player(year = 2018, player = "Karl-Anthony Towns")
+```
+
+
